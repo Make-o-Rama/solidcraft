@@ -363,7 +363,7 @@ pub fn snap_step(half_height: f64) -> f64 {
 }
 
 /// Parameter along the line `base + dir * t` closest to the view ray through `pos`.
-fn along(proj: &Proj, pos: Pos2, base: Vec3, dir: Vec3) -> Option<f64> {
+pub(crate) fn along(proj: &Proj, pos: Pos2, base: Vec3, dir: Vec3) -> Option<f64> {
     let (o, r) = proj.ray(pos);
     let w0 = base - o;
     let (b, d, e) = (dir.dot(r), dir.dot(w0), r.dot(w0));
