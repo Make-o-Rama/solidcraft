@@ -151,3 +151,34 @@ fn press_pull_drags_a_hole_wall() {
     let v = volume(&h);
     assert!((v - (24000.0 - std::f64::consts::PI * 9.0 * 20.0)).abs() / v < 5e-4, "{v}");
 }
+
+/// Pressing on a top face and pulling it up extrudes it by the distance dragged, without any
+/// tool being started; letting go applies it.
+#[test]
+fn pulling_a_face_up_extrudes_it() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":20,"width":20,"height":10,"corner":[0,0,0]})).unwrap();
+    h.step(&json!({"call":"ui.view","params":{"view":"home"}})).unwrap();
+    h.step(&json!({"call":"ui.view","params":{"view":"fit"}})).unwrap();
+    h.settle();
+    h.step(&json!({"drag":[{"world":[10,10,10]},{"world":[10,10,20]}]})).unwrap();
+    h.frames(4);
+    assert!(h.app.dialog.is_none(), "the release applied the extrude");
+    let (lo, hi) = bounds_z(&h);
+    assert!(lo.abs() < 1e-6 && hi > 10.5, "the box grew upward: z {lo}..{hi}");
+}
+
+/// A press on a face that moves sideways is still a box selection: nothing is extruded.
+#[test]
+fn dragging_sideways_over_a_face_does_not_extrude() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":20,"width":20,"height":10,"corner":[0,0,0]})).unwrap();
+    h.step(&json!({"call":"ui.view","params":{"view":"home"}})).unwrap();
+    h.step(&json!({"call":"ui.view","params":{"view":"fit"}})).unwrap();
+    h.settle();
+    let before = volume(&h);
+    h.step(&json!({"drag":[{"world":[10,10,10]},{"world":[18,10,10]}]})).unwrap();
+    h.frames(4);
+    assert!(h.app.dialog.is_none());
+    assert!((volume(&h) - before).abs() < 1e-6);
+}

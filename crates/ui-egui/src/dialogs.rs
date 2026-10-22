@@ -2633,7 +2633,8 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         && !matches!(&d.kind, Kind::Motion(k) if k.wide())
         && !matches!(&d.kind, Kind::Material { editor, .. } if editor.editing());
     let report_active = app.issue_report.draft.is_some();
-    if !report_active && enter_applies && app.applying.is_none() && (enter || canvas_enter || (enter_free && nothing_focused)) {
+    let pulled = std::mem::take(&mut app.viewport.drag_extrude.commit);
+    if !report_active && enter_applies && app.applying.is_none() && (pulled || enter || canvas_enter || (enter_free && nothing_focused)) {
         ok = true;
     }
     if !report_active && esc && !app.esc_handled {
