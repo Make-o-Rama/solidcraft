@@ -1250,7 +1250,13 @@ fn redefine(s: &mut Session, p: &Value) -> Result<Value> {
     // A boundary surface's loop of sketch curves and its curve network are one command's two
     // forms: an edit may turn one into the other.
     let boundary = |k: &FeatureKind| matches!(k, FeatureKind::SurfaceBoundary { .. } | FeatureKind::SurfaceNetwork { .. });
-    if std::mem::discriminant(&new.kind) != std::mem::discriminant(&old.kind) && !(boundary(&new.kind) && boundary(&old.kind)) {
+    // A fillet and a chamfer take the same edges and one size: deciding between round and
+    // bevel can wait until after the edge was dragged, so an edit may turn one into the other.
+    let blend = |k: &FeatureKind| matches!(k, FeatureKind::Fillet { .. } | FeatureKind::Chamfer { .. });
+    if std::mem::discriminant(&new.kind) != std::mem::discriminant(&old.kind)
+        && !(boundary(&new.kind) && boundary(&old.kind))
+        && !(blend(&new.kind) && blend(&old.kind))
+    {
         return Err(bad(cmd, format!("{} is not a {} feature", old.name, cid)));
     }
     // Optional inputs can move other inputs' positions (e.g. Distance 2 goes before Taper).

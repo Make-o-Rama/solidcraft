@@ -807,3 +807,47 @@ fn renaming_a_feature_evaluates_nothing() {
     fresh.refresh();
     assert_eq!(failed(&s), failed(&fresh));
 }
+
+/// Round or bevel is decided after the edge was dragged: redefining a fillet as a chamfer (and back)
+/// keeps the feature's id and place in the timeline, the edge and the size, and undo restores it.
+#[test]
+fn redefining_a_fillet_as_a_chamfer_and_back_keeps_the_feature() {
+    use solidcraft_doc::FeatureKind;
+    let mut s = Session::default();
+    run(&mut s, "solid.box", json!({"length": 40, "width": 30, "height": 20, "name": "Base"}));
+    run(&mut s, "solid.fillet", json!({"edges": [[40, 15, 20]], "radius": 3, "name": "Blend"}));
+    run(&mut s, "solid.fillet", json!({"edges": [[0, 15, 20]], "radius": 2, "name": "Later"}));
+    let id = s.doc.find_feature("Blend").unwrap().id;
+    let volume = |s: &Session| {
+        let bodies = &s.model.state().bodies;
+        assert_eq!(bodies.len(), 1);
+        bodies.first().unwrap().body.tessellate(0.0001).unwrap().measure().volume
+    };
+    // The edges are 30 mm long: a 3 mm bevel removes 3 * 3 / 2 * 30, a 3 mm round (1 - pi / 4) * 3 * 3 * 30,
+    // the 2 mm round of the later feature (1 - pi / 4) * 2 * 2 * 30.
+    let later = (1.0 - std::f64::consts::FRAC_PI_4) * 2.0 * 2.0 * 30.0;
+    let round = (1.0 - std::f64::consts::FRAC_PI_4) * 3.0 * 3.0 * 30.0;
+    assert!((volume(&s) - (24000.0 - round - later)).abs() < 0.5);
+
+    run(&mut s, "timeline.redefine", json!({"feature": id, "command": "solid.chamfer", "params": {"edges": [[40, 15, 20]], "distance": "3"}}));
+    let f = s.doc.find_feature("Blend").unwrap();
+    assert_eq!(f.id, id, "the same feature");
+    assert!(matches!(&f.kind, FeatureKind::Chamfer { .. }));
+    assert_eq!(s.doc.features.iter().position(|f| f.id == id), Some(1), "still the second feature of the timeline");
+    assert!(s.model.result(id).unwrap().error.is_none());
+    assert!(s.model.result(s.doc.find_feature("Later").unwrap().id).unwrap().error.is_none(), "the later feature still rebuilds");
+    assert!((volume(&s) - (24000.0 - 135.0 - later)).abs() < 0.5);
+
+    run(&mut s, "edit.undo", json!({}));
+    assert!(matches!(&s.doc.find_feature("Blend").unwrap().kind, FeatureKind::Fillet { .. }));
+    assert!((volume(&s) - (24000.0 - round - later)).abs() < 0.5);
+
+    run(&mut s, "timeline.redefine", json!({"feature": id, "command": "solid.chamfer", "params": {"edges": [[40, 15, 20]], "distance": "3"}}));
+    run(&mut s, "timeline.redefine", json!({"feature": id, "command": "solid.fillet", "params": {"edges": [[40, 15, 20]], "radius": "3"}}));
+    assert!(matches!(&s.doc.find_feature("Blend").unwrap().kind, FeatureKind::Fillet { .. }));
+    assert!((volume(&s) - (24000.0 - round - later)).abs() < 0.5);
+
+    // Only the two blends are interchangeable.
+    assert!(s.execute("timeline.redefine", &json!({"feature": id, "command": "solid.shell", "params": {"thickness": 1}})).is_err());
+    assert!(matches!(&s.doc.find_feature("Blend").unwrap().kind, FeatureKind::Fillet { .. }), "a refused call changed nothing");
+}
