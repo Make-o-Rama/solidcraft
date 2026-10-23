@@ -158,6 +158,7 @@ pub struct ViewportState {
     pub(crate) occurrence_drag: Option<crate::occurrence_drag::Drag>,
     /// Extrude by pulling a face or profile.
     pub(crate) drag_extrude: crate::drag_extrude::State,
+    pub(crate) drag_blend: crate::drag_blend::State,
     /// The plane the grid was last drawn on while Preferences ▸ Grid follows the view is on
     /// (#1470), kept so the choice is hysteretic near the thresholds (#1993).
     pub(crate) grid_plane: std::sync::Mutex<GridPlane>,
@@ -3403,6 +3404,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
             && !crate::joint_drag::start(app, &proj, a)
         {
             crate::drag_extrude::press(app, &proj, a);
+            crate::drag_blend::press(app, &proj, a);
         }
         if resp.dragged_by(egui::PointerButton::Primary)
             && let Some(p) = hover
@@ -3427,9 +3429,11 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         && let Some(p) = hover
     {
         crate::drag_extrude::to(app, &proj, p);
+        crate::drag_blend::to(app, &proj, p, ui.input(|i| i.modifiers.shift));
     }
     if resp.drag_stopped() || !primary_down {
         crate::drag_extrude::end(app);
+        crate::drag_blend::end(app);
     }
     // Box selection: a primary drag on the model when no navigation mode is on.
     if app.tool.is_none()
@@ -3440,6 +3444,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         && !crate::joint_drag::active(app)
         && !crate::occurrence_drag::active(app)
         && !crate::drag_extrude::started(app)
+        && !crate::drag_blend::started(app)
         && !crate::dim_view::dragging()
         && !crate::sketch3d::dragging()
         && !crate::sketch_text_handles::dragging(app)
@@ -3479,6 +3484,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     hover_highlight(app, &painter, &proj);
     crate::drag_extrude::tick(app);
     crate::drag_extrude::show(app, &painter);
+    crate::drag_blend::show(app, &painter);
     points_2d(app, &painter, &proj);
     if let Some((plane, sketch)) = crate::sketch_attachment_ui::lost_guide(app)
         && let Some((low, high)) = sketch.bounds()
