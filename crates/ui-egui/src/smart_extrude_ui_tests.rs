@@ -207,7 +207,7 @@ fn pull_an_edge_to(shift: bool, enabled: bool, to: [f64; 3]) -> Harness {
     h.step(&json!({"call":"ui.view","params":{"view":"home"}})).unwrap();
     h.step(&json!({"call":"ui.view","params":{"view":"fit"}})).unwrap();
     h.settle();
-    h.step(&json!({"drag":[{"world":[20,10,10]},{"world":to}],"shift":shift})).unwrap();
+    h.step(&json!({"drag":[{"world":[20,10,10]},{"world":to}],"shift":shift,"late_mods":true})).unwrap();
     h.frames(4);
     h
 }
