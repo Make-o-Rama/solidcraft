@@ -251,3 +251,31 @@ fn moving_up_while_pulling_an_edge_sets_the_step() {
     let r: f64 = radius.trim_end_matches(" mm").parse().unwrap_or(f64::NAN);
     assert!(crate::drag_extrude::STEPS.iter().any(|s| (s - r).abs() < 1e-9), "{radius} is a step of the ladder");
 }
+
+/// With the Chamfer dialog open, Fillet turns it into the Fillet dialog (and back): the edges
+/// and the size stay, the chamfer-only settings go.
+#[test]
+fn fillet_and_chamfer_switch_inside_the_open_dialog() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":20,"width":20,"height":10,"corner":[0,0,0]})).unwrap();
+    h.app.start("solid.chamfer");
+    let edge = crate::dialogs::edge_sel(&h.app.session, solidcraft_engine::geom::Vec3::new(20.0, 10.0, 10.0));
+    let d = h.app.dialog.as_mut().unwrap();
+    d.inputs[0].items.extend(edge);
+    if let crate::dialogs::Kind::Fillet { radius, ctype, .. } = &mut d.kind {
+        *radius = "3 mm".into();
+        *ctype = 1;
+    }
+    h.app.start("solid.fillet");
+    let d = h.app.dialog.as_ref().unwrap();
+    match &d.kind {
+        crate::dialogs::Kind::Fillet { radius, chamfer, ctype, .. } => {
+            assert!(!chamfer && *ctype == 0, "now a fillet without the second distance");
+            assert_eq!(radius, "3 mm", "the size carries over");
+        }
+        _ => panic!("still a blend dialog"),
+    }
+    assert_eq!(d.inputs[0].items.len(), 1, "the edge stays picked");
+    h.app.start("solid.chamfer");
+    assert!(matches!(h.app.dialog.as_ref().unwrap().kind, crate::dialogs::Kind::Fillet { chamfer: true, .. }));
+}

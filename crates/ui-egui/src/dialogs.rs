@@ -2921,6 +2921,34 @@ fn mid_points(extra: &serde_json::Map<String, Value>) -> Vec<(f64, String)> {
 pub(crate) const CHAMFER_TYPES: [&str; 3] = ["Equal Distance", "Two Distances", "Distance and Angle"];
 
 /// A new Fillet or Chamfer dialog's values.
+/// Fillet and Chamfer share one dialog: with it open, the other command turns it into that one
+/// (shortcut or toolbar). The picked edges and the size stay; settings the other feature has no
+/// counterpart for (unequal distances, the angle, a variable or spline radius) are dropped.
+/// Returns whether `id` was handled this way.
+pub(crate) fn switch_blend(app: &mut SolveApp, id: &str) -> bool {
+    let to_chamfer = match id {
+        "solid.chamfer" => true,
+        "solid.fillet" => false,
+        _ => return false,
+    };
+    let Some(d) = app.dialog.as_mut() else { return false };
+    let Kind::Fillet { chamfer, ctype, distance2, angle, flip, radius, .. } = &mut d.kind else { return false };
+    if d.editing.is_some() || *chamfer == to_chamfer {
+        return false;
+    }
+    *chamfer = to_chamfer;
+    *ctype = 0;
+    *distance2 = radius.clone();
+    *angle = "45 deg".into();
+    *flip = false;
+    for key in ["type", "swap_ends", "mid", "smooth", "start"] {
+        d.extra.remove(key);
+    }
+    d.error = None;
+    d.focus = true;
+    true
+}
+
 fn fillet_kind(size: &str, chamfer: bool) -> Kind {
     Kind::Fillet { radius: size.into(), chamfer, chain: true, ctype: 0, distance2: size.into(), angle: "45 deg".into(), flip: false }
 }

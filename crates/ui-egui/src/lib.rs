@@ -985,6 +985,9 @@ impl SolveApp {
             let _ = self.run(id, json!({"enabled": !self.preferences.ambient_occlusion}));
             return;
         }
+        if dialogs::switch_blend(self, id) {
+            return;
+        }
         // Another command ends Edit Text (its dialog is not a feature edit to keep).
         sketch_text_move::cancel_drag(self);
         if sketch_text::editing(self) || self.dialog.as_ref().is_some_and(|d| matches!(d.kind, dialogs::Kind::TextMove(_))) {
