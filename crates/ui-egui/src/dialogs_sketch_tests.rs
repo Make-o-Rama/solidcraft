@@ -336,7 +336,7 @@ fn transform_handles_and_fields_scale_move_and_turn_the_picks() {
         sk.curves.iter().map(|c| c.id.clone()).collect()
     };
     let mut d = Dialog::for_command(&h.app, "sketch.transform").unwrap();
-    d.inputs[0].items = ids.iter().map(|id| Sel::SketchCurve { id: id.clone() }).collect();
+    d.inputs[0].items = ids.iter().map(|id| Sel::SketchCurve { id: id.clone(), sketch: None }).collect();
     h.app.dialog = Some(d);
     h.frames(4);
     let state = |h: &Harness| match h.app.dialog.as_ref().map(|d| d.kind.clone()) {

@@ -82,7 +82,7 @@ fn picked_box(app: &SolveApp, d: &crate::dialogs::Dialog) -> Option<(Vec<Vec<Vec
     let mut points: Vec<Vec2> = Vec::new();
     for sel in &d.inputs.first()?.items {
         match sel {
-            Sel::SketchCurve { id } => {
+            Sel::SketchCurve { id, .. } => {
                 if let Some(i) = sk.curve_index(id) {
                     lines.push(sk.polyline(i));
                 }
